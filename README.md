@@ -72,3 +72,10 @@ MIT (same as upstream). Upstream code is not vendored — we ship patches agains
 ---
 
 Part of the connector kit series by Palo Alto AI Research Lab — see also [`telegram-mcp-kit`](https://github.com/tonydzi/telegram-mcp-kit). Questions / broken step? Open an issue — we answer within 24h.
+
+## AI contributors
+
+This project is built by a human + AI team, and the git log says so: Claude writes most of
+the code, Codex and Grok review it, Gemini feeds the research. Each is credited on a commit
+**only if its output changed that commit's content** — no decorative credits. Lab-wide
+policy, one source for every repo: [AI-CONTRIBUTORS.md](https://github.com/tonydzi/.github/blob/main/AI-CONTRIBUTORS.md).
