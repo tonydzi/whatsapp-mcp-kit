@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use whatsapp-mcp-kit in research or software, please cite it as below."
+title: "whatsapp-mcp-kit"
+type: software
+authors:
+  - family-names: Dziatkovskii
+    given-names: Anton
+    orcid: "https://orcid.org/0000-0001-7408-3054"
+    affiliation: "Palo Alto AI Research Lab"
+repository-code: "https://github.com/tonydzi/whatsapp-mcp-kit"
+url: "https://github.com/tonydzi/whatsapp-mcp-kit"
+license: MIT
+abstract: >-
+  The linking procedure nobody ships for a WhatsApp MCP server. On top of the upstream
+  Node/Baileys server @sjawhar/whatsapp-mcp, this kit adds a live self-refreshing QR page
+  that keeps the stdio server alive, scrapes the raw QR string out of its log and renders a
+  scannable PNG on localhost, plus two production patches (always emit the raw QR string;
+  resolve real group names instead of numeric placeholders), a 27-check regression test
+  that needs no phone, no network and no installed server, a dated gotchas page, and a
+  security page about the ban risk of an unofficial client. Upstream code is not vendored.
+keywords:
+  - mcp
+  - model-context-protocol
+  - whatsapp
+  - baileys
+  - claude-code
+  - agent-tooling
