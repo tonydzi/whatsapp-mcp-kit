@@ -88,6 +88,27 @@ policy, one source for every repo: [AI-CONTRIBUTORS.md](https://github.com/tonyd
 > personal data is replaced by plausible fakes of the same shape (never `<REDACTED>`),
 > and a fail-closed gate re-scans the whole tree before the push. Free, MIT.
 
+<!--kits-series:start-->
+
+## 🧰 Connector & Ops Kits
+
+Eight kits, all published 2026-08-10, each lifted out of the same live fleet after it
+survived production rather than written as a demo. They are independent: take one, ignore
+the rest. All stdlib-only Python, all free.
+
+| kit | what it solves |
+|---|---|
+| [`telegram-mcp-kit`](https://github.com/tonydzi/telegram-mcp-kit) | Connect your agent to your own Telegram account in ~15 minutes, with the production patches and every gotcha |
+| [`whatsapp-mcp-kit`](https://github.com/tonydzi/whatsapp-mcp-kit) | Link WhatsApp, using a live self-refreshing QR page that makes pairing actually work |
+| [`mcp-daemon-diet`](https://github.com/tonydzi/mcp-daemon-diet) | One shared MCP daemon per machine instead of a stdio copy in every session, with a watchdog that will not blind your live sessions |
+| [`agent-approval-gate`](https://github.com/tonydzi/agent-approval-gate) | Your agent needs a human's OK and nobody is at the terminal: the ask goes to a messenger, the answer comes back into the run |
+| [`fleet-deploy`](https://github.com/tonydzi/fleet-deploy) | Roll a fix to N machines and prove it landed on each one: canary waves and a verify that must read a fact back |
+| [`secondop-panel`](https://github.com/tonydzi/secondop-panel) | Nobody reviews themselves, and one reviewer model is one blind spot: fan a change out to several model families with quorum and honest skips |
+| [`oss-publish`](https://github.com/tonydzi/oss-publish) | Open up internal work without leaking it: plausible substitutions of the same shape, then a fail-closed gate over the whole tree |
+| [`llm-spend-audit`](https://github.com/tonydzi/llm-spend-audit) | What your own wiring charges on every session, and which paid subscriptions are going undrawn |
+
+<!--kits-series:end-->
+
 <!--ecosystem-map:start-->
 
 ## 🧩 One piece of a working system
