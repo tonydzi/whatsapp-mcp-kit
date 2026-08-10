@@ -71,7 +71,7 @@ MIT (same as upstream). Upstream code is not vendored — we ship patches agains
 
 ---
 
-Part of the connector kit series by Palo Alto AI Research Lab — see also [`telegram-mcp-kit`](https://github.com/tonydzi/telegram-mcp-kit). Questions / broken step? Open an issue — we answer within 24h.
+Part of the connector kit series by Palo Alto AI Research Lab — see also [`telegram-mcp-kit`](https://github.com/tonydzi/telegram-mcp-kit) and [`mcp-daemon-diet`](https://github.com/tonydzi/mcp-daemon-diet) (one shared MCP daemon per machine instead of a copy in every session; the recipe applies to this server too). Questions / broken step? Open an issue — we answer within 24h.
 
 ## AI contributors
 
