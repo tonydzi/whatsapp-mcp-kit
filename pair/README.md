@@ -47,10 +47,10 @@ The scan itself cannot be automated: WhatsApp accepts a companion device only fr
 ```bash
 python wa_qr_live.py --check       # diagnosis, zero side effects
 python wa_qr_live.py --selftest    # proves the part can work (no phone, no network)
-python test_wa_qr_live.py          # 24-check regression
+python test_wa_qr_live.py          # 27-check regression
 ```
 
-The regression needs no network, no phone and no server installed. It goes red on broken code — verified by mutation (re-introducing the crash-guard bug turns checks red, not green).
+The 27 checks need no network, no phone and no server installed. It goes red on broken code — verified by mutation (re-introducing the crash-guard bug turns checks red, not green).
 
 ## Boundaries
 
