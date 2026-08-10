@@ -1,0 +1,74 @@
+# whatsapp-mcp-kit
+
+Connect Claude (Claude Code / Claude Desktop / Codex — any MCP client) to **a WhatsApp account** so it can read your chats and send messages. The server already exists and is good; what nobody ships is the **linking procedure**. Ours took an evening of broken iterations and a re-scan loop; with this kit it should take you ~20 minutes.
+
+Built and battle-tested at [Palo Alto AI Research Lab](https://github.com/tonydzi/Palo-Alto-AI-Research-Lab) — our Claude fleet has been reading WhatsApp through exactly this setup since June 2026.
+
+> ⚠️ Read [`docs/SECURITY.md`](docs/SECURITY.md) first. Baileys is an **unofficial** WhatsApp client; upstream recommends a dedicated number, not your personal one. We linked a main number knowingly and accept the ban risk. That should be a decision, not an accident.
+
+## What you get
+
+1. **A working setup path** on top of the upstream server [`@sjawhar/whatsapp-mcp`](https://github.com/sjawhar/whatsapp-mcp-2.0) (Node/Baileys, security-hardened fork of `karlfoster/whatsapp-mcp-2.0`; 17 tools — list/search chats, messages, contacts, send text & files, download media, transcribe voice notes).
+2. **[`PROMPT.md`](PROMPT.md)** — a copy-paste prompt you hand to Claude Code or Codex; it performs the installation and walks you through the QR scan, gotchas included.
+3. **[`pair/wa_qr_live.py`](pair/wa_qr_live.py)** — the piece that made linking actually work: it keeps the stdio server alive, scrapes the raw QR string out of its log, renders a **PNG** and serves a **live localhost page** that refreshes the code by itself. Plus a 24-check regression test that needs no phone, no network and no server installed.
+4. **Patches** we run in production, pinned to upstream **npm v2.4.0** (`git apply --check` proven on a fresh `npm pack` unpack):
+   - [`patches/0001-qr-raw-to-stderr.patch`](patches/0001-qr-raw-to-stderr.patch) — print the raw QR string, always. Upstream only emits terminal ASCII art (and the raw string solely in a `.catch()` fallback), and that art is unscannable mosaic in most Windows console fonts. Without this patch there is nothing to render a PNG from.
+   - [`patches/0002-group-subject-resolve.patch`](patches/0002-group-subject-resolve.patch) — real group names. `db.getChat` always fills a `<digits> (group)` placeholder, so `resolveChatName` never fires and every group shows up as a number. Cost us ~70 unnamed groups.
+5. **[`docs/GOTCHAS.md`](docs/GOTCHAS.md)** — every trap we paid hours for, with dates.
+6. **[`docs/SECURITY.md`](docs/SECURITY.md)** — a WhatsApp MCP is your whole WhatsApp. Read before linking.
+
+## Quickstart (manual)
+
+```bash
+# 0. get the kit (patches/ and pair/ must sit together on disk)
+git clone https://github.com/tonydzi/whatsapp-mcp-kit ~/whatsapp-mcp-kit
+
+# 1. install the server (Node >= 18)
+npm i -g @sjawhar/whatsapp-mcp
+
+# 2. apply the kit patches to the installed package
+#    (the folder is not a git repo -- git apply patches a plain working tree just fine)
+cd "$(npm root -g)/@sjawhar/whatsapp-mcp"
+git apply ~/whatsapp-mcp-kit/patches/0001-qr-raw-to-stderr.patch
+git apply ~/whatsapp-mcp-kit/patches/0002-group-subject-resolve.patch
+
+# 3. link the phone: live QR page on http://127.0.0.1:8799
+pip install qrcode pillow
+python ~/whatsapp-mcp-kit/pair/wa_qr_live.py
+
+# 4. register in Claude Code
+claude mcp add whatsapp --scope user -- node "$(npm root -g)/@sjawhar/whatsapp-mcp/dist/index.js"
+```
+
+On the page: phone → WhatsApp → **Settings → Linked devices → Link a device** → point the camera. Restart your Claude session (a newly added stdio MCP appears only after a restart), then call `get_my_profile`.
+
+Exit codes of the pairing tool: `0` linked · `1` timeout · `2` already linked · `3` environment not ready · `4` crash. Diagnose anytime with `--check` (zero side effects), prove the tool itself with `--selftest`.
+
+## The lazy path
+
+Open Claude Code, paste the contents of [`PROMPT.md`](PROMPT.md), scan one QR. Done.
+
+## The three things that actually cost us the evening
+
+1. **An MCP stdio server kills itself when stdin closes.** Any standalone pairing run dies instantly with "stdin closed (parent disconnected) — shutting down". The pairing tool holds stdin open forever.
+2. **"Check your connection and try again later" on the phone is not a network error** — it means you scanned an **expired** QR (they live ~18-20s). Hence the auto-refreshing page: you always scan the current one.
+3. **A pause between codes is normal; killing the live client to "fix" it makes things worse.** Measured 2026-08-05: hands-off run produced 17 codes in a row; the run that restarted the client three times got 2 codes per client and gave up in 4 minutes — WhatsApp throttles frequent reconnects. We respawn a corpse only (`child.poll() is not None`).
+
+## Why a user-account server and not the Business API?
+
+The Cloud/Business API cannot read your existing personal chats — that is the entire point of giving an assistant your WhatsApp. It is also why the security page exists. If your use case fits the official API, use the official API: it is supported and cannot get you banned.
+
+## Known limits (honest)
+
+- **History loads gradually.** A companion device receives recent chats, not your multi-year archive. For the full archive you need a phone-backup path — not in this kit.
+- **One writer per link.** A second READ-ONLY client coexists (the server degrades the newcomer to read-only); a second WRITE client gives `AUTH_KEY_DUPLICATED` and forces a re-scan.
+- **Patches live in `node_modules`** and are wiped by any `npm update` / reinstall. Re-apply, or run `python pair/wa_qr_live.py --heal-patch` for patch 0001.
+- **The QR scan itself cannot be automated.** WhatsApp accepts a companion device only from the owner's phone. Everything around the scan is automated here; the scan is yours.
+
+## License
+
+MIT (same as upstream). Upstream code is not vendored — we ship patches against it and credit the original authors: [`sjawhar/whatsapp-mcp-2.0`](https://github.com/sjawhar/whatsapp-mcp-2.0), forked from `karlfoster/whatsapp-mcp-2.0`, built on [Baileys](https://github.com/WhiskeySockets/Baileys).
+
+---
+
+Part of the connector kit series by Palo Alto AI Research Lab — see also [`telegram-mcp-kit`](https://github.com/tonydzi/telegram-mcp-kit). Questions / broken step? Open an issue — we answer within 24h.

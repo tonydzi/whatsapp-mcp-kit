@@ -1,0 +1,20 @@
+diff --git a/dist/whatsapp.js b/dist/whatsapp.js
+index 7fec4c1..e3267ad 100644
+--- a/dist/whatsapp.js
++++ b/dist/whatsapp.js
+@@ -850,8 +850,13 @@ export async function getChat(jid) {
+     await connectionReady;
+     const normalJid = toJid(jid);
+     const chat = db.getChat(normalJid);
+-    // Resolve name if missing
+-    if (chat && !chat.name) {
++    // Resolve name if missing.
++    // PATCH (whatsapp-mcp-kit, field-tested 2026-06-15): db.getChat always fills a
++    // placeholder name ("<digits> (group)") via fromJid(), so groups never reach
++    // resolveChatName and their real subject is never fetched. Force resolution when
++    // the name is still the numeric placeholder. Re-apply after any `npm update`.
++    const isPlaceholder = chat && chat.isGroup && /^\d[\d-]*\s\(group\)$/.test(chat.name || "");
++    if (chat && (!chat.name || isPlaceholder)) {
+         const name = await resolveChatName(normalJid);
+         if (name)
+             chat.name = name;

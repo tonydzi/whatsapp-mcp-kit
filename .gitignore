@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+qr.png
+qr_string.txt
+status.json
+server.log

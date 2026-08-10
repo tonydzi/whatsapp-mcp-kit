@@ -1,0 +1,12 @@
+diff --git a/dist/whatsapp.js b/dist/whatsapp.js
+index f8bb9ad..7fec4c1 100644
+--- a/dist/whatsapp.js
++++ b/dist/whatsapp.js
+@@ -1128,6 +1128,7 @@ function extensionFromMime(mime) {
+ }
+ // ─── QR Code Rendering ─────────────────────────────────────────────
+ function printQrToStderr(qr) {
++    console.error("QR_RAW_BEGIN" + qr + "QR_RAW_END");
+     // @ts-ignore - qrcode-terminal has no types
+     import("qrcode-terminal").then((mod) => {
+         const QRC = mod.default || mod;
