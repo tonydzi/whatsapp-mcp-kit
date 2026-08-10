@@ -10,7 +10,7 @@ Built and battle-tested at [Palo Alto AI Research Lab](https://github.com/tonydz
 
 1. **A working setup path** on top of the upstream server [`@sjawhar/whatsapp-mcp`](https://github.com/sjawhar/whatsapp-mcp-2.0) (Node/Baileys, security-hardened fork of `karlfoster/whatsapp-mcp-2.0`; 17 tools — list/search chats, messages, contacts, send text & files, download media, transcribe voice notes).
 2. **[`PROMPT.md`](PROMPT.md)** — a copy-paste prompt you hand to Claude Code or Codex; it performs the installation and walks you through the QR scan, gotchas included.
-3. **[`pair/wa_qr_live.py`](pair/wa_qr_live.py)** — the piece that made linking actually work: it keeps the stdio server alive, scrapes the raw QR string out of its log, renders a **PNG** and serves a **live localhost page** that refreshes the code by itself. Plus a 24-check regression test that needs no phone, no network and no server installed.
+3. **[`pair/wa_qr_live.py`](pair/wa_qr_live.py)** — the piece that made linking actually work: it keeps the stdio server alive, scrapes the raw QR string out of its log, renders a **PNG** and serves a **live localhost page** that refreshes the code by itself. Plus a 27-check regression test that needs no phone, no network and no server installed.
 4. **Patches** we run in production, pinned to upstream **npm v2.4.0** (`git apply --check` proven on a fresh `npm pack` unpack):
    - [`patches/0001-qr-raw-to-stderr.patch`](patches/0001-qr-raw-to-stderr.patch) — print the raw QR string, always. Upstream only emits terminal ASCII art (and the raw string solely in a `.catch()` fallback), and that art is unscannable mosaic in most Windows console fonts. Without this patch there is nothing to render a PNG from.
    - [`patches/0002-group-subject-resolve.patch`](patches/0002-group-subject-resolve.patch) — real group names. `db.getChat` always fills a `<digits> (group)` placeholder, so `resolveChatName` never fires and every group shows up as a number. Cost us ~70 unnamed groups.
@@ -42,7 +42,7 @@ claude mcp add whatsapp --scope user -- node "$(npm root -g)/@sjawhar/whatsapp-m
 
 On the page: phone → WhatsApp → **Settings → Linked devices → Link a device** → point the camera. Restart your Claude session (a newly added stdio MCP appears only after a restart), then call `get_my_profile`.
 
-Exit codes of the pairing tool: `0` linked · `1` timeout · `2` already linked · `3` environment not ready · `4` crash. Diagnose anytime with `--check` (zero side effects), prove the tool itself with `--selftest`.
+Exit codes of the pairing tool: `0` linked · `1` timeout · `2` already linked · `3` environment not ready · `4` crash — and they do not lie: a `--heal-patch` that patched nothing exits 3, not 0. Diagnose anytime with `--check` (zero side effects), prove the tool itself with `--selftest`.
 
 ## The lazy path
 
