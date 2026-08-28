@@ -2,7 +2,7 @@
 
 Connect Claude (Claude Code / Claude Desktop / Codex — any MCP client) to **a WhatsApp account** so it can read your chats and send messages. The server already exists and is good; what nobody ships is the **linking procedure**. Ours took an evening of broken iterations and a re-scan loop; with this kit it should take you ~20 minutes.
 
-Built and battle-tested at [Palo Alto AI Research Lab](https://github.com/tonydzi/Palo-Alto-AI-Research-Lab) — our Claude fleet has been reading WhatsApp through exactly this setup since June 2026.
+Built and battle-tested at [Palo Alto AI Research Lab](https://github.com/tonydzi/tonydzi) — our Claude fleet has been reading WhatsApp through exactly this setup since June 2026.
 
 > ⚠️ Read [`docs/SECURITY.md`](docs/SECURITY.md) first. Baileys is an **unofficial** WhatsApp client; upstream recommends a dedicated number, not your personal one. We linked a main number knowingly and accept the ban risk. That should be a decision, not an accident.
 
