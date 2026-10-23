@@ -4,6 +4,14 @@ Connect Claude (Claude Code / Claude Desktop / Codex — any MCP client) to **a 
 
 Built and battle-tested at [Palo Alto AI Research Lab](https://github.com/tonydzi/tonydzi) — our Claude fleet has been reading WhatsApp through exactly this setup since June 2026.
 
+## One command
+
+```bash
+claude "$(curl -fsSL https://raw.githubusercontent.com/tonydzi/whatsapp-mcp-kit/956d8a3af3d84b0030266b4d34c23e0f69f47f11/PROMPT.md)"
+```
+
+That opens Claude Code with [`PROMPT.md`](PROMPT.md) (pinned to a commit, read it first) as the first message. It asks you to confirm the number and the ban risk, installs and patches the server, opens a QR page, and you scan once from your phone. **What you see at the end:** restart Claude, call `get_my_profile`, and your own WhatsApp name comes back. Codex or another agent: paste the same file. Step by step by hand: [Quickstart](#quickstart-manual) below.
+
 > ⚠️ Read [`docs/SECURITY.md`](docs/SECURITY.md) first. Baileys is an **unofficial** WhatsApp client; upstream recommends a dedicated number, not your personal one. We linked a main number knowingly and accept the ban risk. That should be a decision, not an accident.
 
 ## What you get
