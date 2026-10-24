@@ -1,77 +1,28 @@
 # whatsapp-mcp-kit
 
-Connect Claude (Claude Code / Claude Desktop / Codex — any MCP client) to **a WhatsApp account** so it can read your chats and send messages. The server already exists and is good; what nobody ships is the **linking procedure**. Ours took an evening of broken iterations and a re-scan loop; with this kit it should take you ~20 minutes.
+Connect Claude (Claude Code / Claude Desktop / Codex — any MCP client) to **a WhatsApp account** so it can read your chats and send messages. Includes portable setup skills, prompts, private pairing, shared HTTP configuration and recovery instructions.
 
 Built and battle-tested at [Palo Alto AI Research Lab](https://github.com/tonydzi/tonydzi) — our Claude fleet has been reading WhatsApp through exactly this setup since June 2026.
 
-## One command
+## Current setup for Claude Code and Codex
 
-```bash
-claude "$(curl -fsSL https://raw.githubusercontent.com/tonydzi/whatsapp-mcp-kit/956d8a3af3d84b0030266b4d34c23e0f69f47f11/PROMPT.md)"
-```
+Read the [complete runbook (Russian)](README.ru.md), then use the [Claude Code prompt](PROMPT-CLAUDE.ru.md) or [Codex prompt](PROMPT-CODEX.ru.md). Install the portable [whatsapp-connect skill](skills/whatsapp-connect/SKILL.md) for future sessions. Both clients connect to one loopback HTTP service; they must not each launch a full WhatsApp connection.
 
-That opens Claude Code with [`PROMPT.md`](PROMPT.md) (pinned to a commit, read it first) as the first message. It asks you to confirm the number and the ban risk, installs and patches the server, opens a QR page, and you scan once from your phone. **What you see at the end:** restart Claude, call `get_my_profile`, and your own WhatsApp name comes back. Codex or another agent: paste the same file. Step by step by hand: [Quickstart](#quickstart-manual) below.
+This is one linked-device stack: [`@sjawhar/whatsapp-mcp`](https://github.com/sjawhar/whatsapp-mcp-2.0) + Baileys. Multiple accounts need separate private data roots and owners. The unofficial-client account restriction risk and access to private message content must be understood before linking; see [security](docs/SECURITY.md).
 
-> ⚠️ Read [`docs/SECURITY.md`](docs/SECURITY.md) first. Baileys is an **unofficial** WhatsApp client; upstream recommends a dedicated number, not your personal one. We linked a main number knowingly and accept the ban risk. That should be a decision, not an accident.
+### Pinned setup and pairing
 
-## What you get
+The runbook uses isolated npm installation of version **2.4.0**, checked historical patches, private environment storage and one operational supervisor. Its HTTP branch has **no built-in account lock** in that release; do not start another owner manually or through a second service. The docs distinguish this operational rule from enforced exclusion.
 
-1. **A working setup path** on top of the upstream server [`@sjawhar/whatsapp-mcp`](https://github.com/sjawhar/whatsapp-mcp-2.0) (Node/Baileys, security-hardened fork of `karlfoster/whatsapp-mcp-2.0`; 17 tools — list/search chats, messages, contacts, send text & files, download media, transcribe voice notes).
-2. **[`PROMPT.md`](PROMPT.md)** — a copy-paste prompt you hand to Claude Code or Codex; it performs the installation and walks you through the QR scan, gotchas included.
-3. **[`pair/wa_qr_live.py`](pair/wa_qr_live.py)** — the piece that made linking actually work: it keeps the stdio server alive, scrapes the raw QR string out of its log, renders a **PNG** and serves a **live localhost page** that refreshes the code by itself. Plus a 27-check regression test that needs no phone, no network and no server installed.
-4. **Patches** we run in production, pinned to upstream **npm v2.4.0** (`git apply --check` proven on a fresh `npm pack` unpack):
-   - [`patches/0001-qr-raw-to-stderr.patch`](patches/0001-qr-raw-to-stderr.patch) — print the raw QR string, always. Upstream only emits terminal ASCII art (and the raw string solely in a `.catch()` fallback), and that art is unscannable mosaic in most Windows console fonts. Without this patch there is nothing to render a PNG from.
-   - [`patches/0002-group-subject-resolve.patch`](patches/0002-group-subject-resolve.patch) — real group names. `db.getChat` always fills a `<digits> (group)` placeholder, so `resolveChatName` never fires and every group shows up as a number. Cost us ~70 unnamed groups.
-5. **[`docs/GOTCHAS.md`](docs/GOTCHAS.md)** — every trap we paid hours for, with dates.
-6. **[`docs/SECURITY.md`](docs/SECURITY.md)** — a WhatsApp MCP is your whole WhatsApp. Read before linking.
+The [QR helper](pair/wa_qr_live.py) holds stdin open and renders a refreshing local PNG page. It now rejects nonempty draft credentials: saved account/Signal-identity structure is required. That is persisted-state evidence, not fresh network connectivity. Prove a new incoming nonce in each AI client after startup and restart. A port, cached profile, old chat list or exit 0 does not prove live delivery.
 
-## Quickstart (manual)
+For code-based phone pairing see the [bounded prompt](PROMPT-PHONE-CODE.ru.md). Baileys has the API; this kit does not yet ship a ready phone-code CLI. Do not invent flags for the MCP server or launch a second socket on the same auth directory.
 
-```bash
-# 0. get the kit (patches/ and pair/ must sit together on disk)
-git clone https://github.com/tonydzi/whatsapp-mcp-kit ~/whatsapp-mcp-kit
+### What is tested
 
-# 1. install the server (Node >= 18)
-npm i -g @sjawhar/whatsapp-mcp
+Offline synthetic regression covers draft/invalid persisted state, QR parsing and helper process behavior. New phone pairing, a fresh three-OS installation and recipient acceptance have **not** been rerun for this documentation update. Preserve these limits in your own report.
 
-# 2. apply the kit patches to the installed package
-#    (the folder is not a git repo -- git apply patches a plain working tree just fine)
-cd "$(npm root -g)/@sjawhar/whatsapp-mcp"
-git apply ~/whatsapp-mcp-kit/patches/0001-qr-raw-to-stderr.patch
-git apply ~/whatsapp-mcp-kit/patches/0002-group-subject-resolve.patch
-
-# 3. link the phone: live QR page on http://127.0.0.1:8799
-pip install qrcode pillow
-python ~/whatsapp-mcp-kit/pair/wa_qr_live.py
-
-# 4. register in Claude Code
-claude mcp add whatsapp --scope user -- node "$(npm root -g)/@sjawhar/whatsapp-mcp/dist/index.js"
-```
-
-On the page: phone → WhatsApp → **Settings → Linked devices → Link a device** → point the camera. Restart your Claude session (a newly added stdio MCP appears only after a restart), then call `get_my_profile`.
-
-Exit codes of the pairing tool: `0` linked · `1` timeout · `2` already linked · `3` environment not ready · `4` crash — and they do not lie: a `--heal-patch` that patched nothing exits 3, not 0. Diagnose anytime with `--check` (zero side effects), prove the tool itself with `--selftest`.
-
-## The lazy path
-
-Open Claude Code, paste the contents of [`PROMPT.md`](PROMPT.md), scan one QR. Done.
-
-## The three things that actually cost us the evening
-
-1. **An MCP stdio server kills itself when stdin closes.** Any standalone pairing run dies instantly with "stdin closed (parent disconnected) — shutting down". The pairing tool holds stdin open forever.
-2. **"Check your connection and try again later" on the phone is not a network error** — it means you scanned an **expired** QR (they live ~18-20s). Hence the auto-refreshing page: you always scan the current one.
-3. **A pause between codes is normal; killing the live client to "fix" it makes things worse.** Measured 2026-08-05: hands-off run produced 17 codes in a row; the run that restarted the client three times got 2 codes per client and gave up in 4 minutes — WhatsApp throttles frequent reconnects. We respawn a corpse only (`child.poll() is not None`).
-
-## Why a user-account server and not the Business API?
-
-The Cloud/Business API cannot read your existing personal chats — that is the entire point of giving an assistant your WhatsApp. It is also why the security page exists. If your use case fits the official API, use the official API: it is supported and cannot get you banned.
-
-## Known limits (honest)
-
-- **History loads gradually.** A companion device receives recent chats, not your multi-year archive. For the full archive you need a phone-backup path — not in this kit.
-- **One writer per link.** A second READ-ONLY client coexists (the server degrades the newcomer to read-only); a second WRITE client gives `AUTH_KEY_DUPLICATED` and forces a re-scan.
-- **Patches live in `node_modules`** and are wiped by any `npm update` / reinstall. Re-apply, or run `python pair/wa_qr_live.py --heal-patch` for patch 0001.
-- **The QR scan itself cannot be automated.** WhatsApp accepts a companion device only from the owner's phone. Everything around the scan is automated here; the scan is yours.
+Do not run remote prompts blindly or enter secrets in an agent conversation. Follow [pairing documentation](pair/README.md) with the selected package bytes. Phone errors can have several causes; expiry is one possible cause, not a diagnosis from the wording alone. History depth is not guaranteed: measure actual sync rather than assuming a complete archive.
 
 ## License
 

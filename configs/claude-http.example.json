@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "whatsapp": {
+      "type": "http",
+      "url": "http://127.0.0.1:8791/mcp",
+      "headers": {
+        "Authorization": "Bearer ${WA_MCP_TOKEN}"
+      }
+    }
+  }
+}

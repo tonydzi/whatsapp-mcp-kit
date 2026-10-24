@@ -1,0 +1,5 @@
+# Example only. Merge this table; do not overwrite the user's configuration.
+# Port 8791 is an example. Match the actual account owner listener.
+[mcp_servers.whatsapp]
+url = "http://127.0.0.1:8791/mcp"
+bearer_token_env_var = "WA_MCP_TOKEN"

@@ -20,7 +20,7 @@ WHAT IT DOES:
      itself down the moment stdin closes ("stdin closed -- shutting down");
   3. scrapes the raw QR string out of the server log, renders a PNG, writes status.json;
   4. serves a local page: QR + status + generation counter (markup generated here, one source);
-  5. detects the moment auth_info/creds.json appears -> page says "done", bridge is killed,
+  5. detects persisted account/identity state -> page says "done", bridge is killed,
      process exits 0.
 
 EXIT CODES: 0 = linked · 1 = timeout / QR never arrived · 2 = already linked, nothing to do ·
@@ -29,8 +29,8 @@ EXIT CODES: 0 = linked · 1 = timeout / QR never arrived · 2 = already linked, 
 TROUBLESHOOTING:
   * "no QR in 90s" -> look at server.log: no QR_RAW_BEGIN there means the vendor patch is
     gone (any `npm update` removes it) -> run with --heal-patch;
-  * two clients on one link = AUTH_KEY_DUPLICATED and a forced re-scan. Preflight counts
-    live clients and refuses to start without --force;
+  * two clients on one link can conflict. Preflight detects verified Node entrypoints
+    and refuses a duplicate; --force is disabled because account ownership is unknown;
   * on Windows terminate()/kill() does not reliably kill a node child -> we use taskkill /F /T.
 
 Requires: python3 with `qrcode` + `pillow` (pip install qrcode pillow), node in PATH,
@@ -44,6 +44,7 @@ import http.server
 import json
 import os
 import re
+import shlex
 import shutil
 import socketserver
 import subprocess
@@ -111,13 +112,22 @@ QR_RE = re.compile(r"QR_RAW_BEGIN(.*?)QR_RAW_END", re.S)
 
 # ---------------------------------------------------------------- state
 def paired():
-    """Linked = a NON-EMPTY creds.json exists. A responding profile or a chat list is
-    NOT proof: the server answers those from its local cache and they lied to us for
-    26 days straight while the link was dead."""
+    """Structural pairing evidence, never a current-connection health check.
+
+    A pairing-code request can create a nonempty file with me.id before the user
+    enters the code. registered alone is also not a reliable oracle. Require the
+    persisted account and Signal identities; signature verification and fresh
+    inbound readback remain outside this local shape check.
+    """
     try:
-        return os.path.getsize(CREDS) > 0
-    except OSError:
+        with open(CREDS, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except (OSError, ValueError):
         return False
+    return (isinstance(data, dict)
+            and isinstance(data.get("account"), dict) and bool(data["account"])
+            and isinstance(data.get("signalIdentities"), list)
+            and bool(data["signalIdentities"]))
 
 
 def _read(path):
@@ -145,34 +155,111 @@ def vendor_ok():
     return problems
 
 
-def live_nodes():
-    """[(pid, cmdline)] of live WhatsApp server processes. A second client on the same
-    link means AUTH_KEY_DUPLICATED and a forced re-scan."""
-    if os.name != "nt":
-        try:
-            out = subprocess.run(["pgrep", "-af", "whatsapp-mcp"], capture_output=True,
-                                 text=True, timeout=30).stdout.strip()
-        except Exception:
-            return []
-        rows = []
-        for line in out.splitlines():
-            parts = line.split(None, 1)
-            if parts and parts[0].isdigit():
-                rows.append((int(parts[0]), parts[1] if len(parts) > 1 else ""))
-        return rows
-    ps = ("Get-CimInstance Win32_Process -Filter \"Name='node.exe'\" | "
-          "Where-Object { $_.CommandLine -like '*whatsapp-mcp*' } | "
-          "Select-Object ProcessId,CommandLine | ConvertTo-Json -Compress")
+def _process_cwd(pid):
+    """Linux can resolve a relative entrypoint without guessing our own cwd.
+
+    Other platforms or inaccessible processes return unknown; never infer it.
+    """
     try:
-        out = subprocess.run(["powershell.exe", "-NoProfile", "-Command", ps],
-                             capture_output=True, text=True, timeout=45).stdout.strip()
-        if not out:
-            return []
-        j = json.loads(out)
-        j = [j] if isinstance(j, dict) else j
-        return [(int(x["ProcessId"]), x.get("CommandLine") or "") for x in j]
+        return os.readlink("/proc/%d/cwd" % pid)
+    except OSError:
+        return None
+
+
+def _server_rows(rows, self_pid):
+    """Conservative exact Node entrypoint detection; never a permission to kill.
+
+    rows are (pid, parent_pid, executable_name, command_line). Account ownership
+    cannot be proved from argv, so callers refuse rather than kill other clients.
+    """
+    target = os.path.normcase(os.path.realpath(VENDOR_ENTRY))
+    found = []
+    unresolved = False
+    def is_server_script(arg):
+        normalized = arg.replace("\\", "/").lower()
+        return (normalized.endswith("/@sjawhar/whatsapp-mcp/dist/index.js")
+                or os.path.normcase(os.path.realpath(arg)) == target)
+
+    for pid, _, executable, command in rows:
+        if pid == self_pid:
+            continue
+        named_node = os.path.basename(executable).lower() in ("node", "nodejs", "node.exe")
+        wa_hint = "whatsapp-mcp" in command.lower()
+        if not command.strip():
+            unresolved |= named_node  # hidden Windows CommandLine needs manual inspection
+            continue
+        try:
+            argv = shlex.split(command, posix=(os.name != "nt"))
+        except ValueError:
+            unresolved |= wa_hint
+            continue
+        if not argv:
+            continue
+        argv = [arg.strip('"') for arg in argv]
+        argv_node = os.path.basename(argv[0]).lower() in ("node", "nodejs", "node.exe")
+        if not named_node and not argv_node:
+            # Non-Node helpers mentioning this kit must not block themselves.
+            # An ambiguous POSIX executable with a vendor hint is still unknown.
+            unresolved |= not executable and wa_hint
+            continue
+        matched = False
+        for arg in argv[1:]:
+            if os.path.isabs(arg):
+                matched |= is_server_script(arg)
+                continue
+            relative = arg.replace("\\", "/").lower()
+            plausible = "whatsapp-mcp" in relative or relative in ("dist/index.js", "./dist/index.js")
+            if not plausible:
+                continue
+            cwd = _process_cwd(pid)
+            if cwd:
+                matched |= is_server_script(os.path.join(cwd, arg))
+            else:
+                unresolved = True
+        if matched:
+            found.append((pid, command))
+    return None if unresolved else found
+
+
+def live_nodes():
+    """Verified entrypoint rows or None if inventory failed. Never broad pgrep."""
+    try:
+        if os.name != "nt":
+            result = subprocess.run(["ps", "-eo", "pid=,ppid=,args="],
+                                    capture_output=True, text=True, timeout=30)
+            if result.returncode != 0:
+                return None
+            rows = []
+            for line in result.stdout.splitlines():
+                fields = line.split(None, 2)
+                if len(fields) == 3 and fields[0].isdigit() and fields[1].isdigit():
+                    try:
+                        argv = shlex.split(fields[2])
+                        executable = argv[0] if argv else ""
+                        # macOS ps may render an executable path with unquoted
+                        # spaces. Recover only a prefix ending in the Node binary.
+                        for width in range(1, min(len(argv), 8) + 1):
+                            candidate = " ".join(argv[:width])
+                            if os.path.basename(candidate).lower() in ("node", "nodejs", "node.exe"):
+                                executable = candidate
+                                break
+                    except ValueError:
+                        executable = ""
+                    rows.append((int(fields[0]), int(fields[1]), executable, fields[2]))
+        else:
+            ps = ("Get-CimInstance Win32_Process | "
+                  "Select-Object ProcessId,ParentProcessId,Name,CommandLine | ConvertTo-Json -Compress")
+            result = subprocess.run(["powershell.exe", "-NoProfile", "-Command", ps],
+                                    capture_output=True, text=True, timeout=45)
+            if result.returncode != 0:
+                return None
+            values = json.loads(result.stdout or "[]")
+            values = [values] if isinstance(values, dict) else values
+            rows = [(int(x["ProcessId"]), int(x["ParentProcessId"]), x.get("Name") or "",
+                     x.get("CommandLine") or "") for x in values]
+        return _server_rows(rows, os.getpid())
     except Exception:
-        return []
+        return None
 
 
 def hard_kill(pid):
@@ -251,7 +338,7 @@ def write_page(port):
    if(s.state === 'LINKED'){
      document.body.classList.add('done');
      st.innerHTML = '<span class="ok">done - device linked. you can close this window</span>';
-     sub.textContent = 'now verify from your MCP client: call get_my_profile';
+     sub.textContent = 'stored pairing state found; now verify a new incoming test message from your MCP client';
      return;                                   // nothing left to poll
    }
    if(s.state === 'QR'){
@@ -334,8 +421,8 @@ def open_in_browser(url):
 def pair(port, timeout_sec, force, open_page):
     os.makedirs(WORK, exist_ok=True)
     if paired():
-        print("ALREADY LINKED -- no scan needed (creds.json is present at %s)." % CREDS)
-        print("If the channel is still silent, that is not the link: check your MCP client.")
+        print("STORED PAIRING STATE -- no automatic re-scan (state at %s)." % CREDS)
+        print("Current connectivity is not verified: test a new incoming message through your owner.")
         return 2
     problems = vendor_ok()
     if problems:
@@ -343,18 +430,19 @@ def pair(port, timeout_sec, force, open_page):
         for p in problems:
             print("  * " + p)
         return 3
+    if force:
+        print("--force is deprecated and cannot kill foreign clients; normal duplicate checks still apply.")
     others = live_nodes()
-    if others and not force:
+    if others is None:
+        print("PROCESS INVENTORY UNKNOWN -- refusing to start another WhatsApp client.")
+        return 3
+    if others:
         print("%d WhatsApp client(s) ALREADY RUNNING -- a second one on the same link"
               % len(others))
-        print("gives AUTH_KEY_DUPLICATED and forces a re-scan. Kill them or use --force:")
+        print("may conflict with this link. Account ownership is unknown: coordinate its supervisor; do not force-kill:")
         for pid, cmd in others:
             print("  pid=%s %s" % (pid, cmd[:90]))
         return 3
-    for pid, cmd in others:                      # --force: kill LOUDLY, with names
-        print("--force: killing foreign client pid=%s %s" % (pid, cmd[:70]))
-        hard_kill(pid)
-
     write_page(port)
     set_status("BOOT", note="starting the bridge...", generation=0)
     for old in (QR_PNG, QR_TXT):
@@ -397,7 +485,7 @@ def pair(port, timeout_sec, force, open_page):
                            note="bridge is reconnecting, a fresh code is coming")
             if paired():
                 set_status("LINKED", generation=gen)
-                print("LINKED: creds.json appeared.")
+                print("LINKED: account and identity state saved; verify fresh inbound separately.")
                 time.sleep(4)                    # let the page show "done"
                 return 0
             blocks = QR_RE.findall(_read(LOG))
@@ -440,8 +528,8 @@ def check():
     probs = vendor_ok()
     print("environment     : " + ("ok" if not probs else "; ".join(probs)))
     nodes = live_nodes()
-    print("live clients    : %d%s" % (len(nodes),
-                                      (" (pids %s)" % [p for p, _ in nodes]) if nodes else ""))
+    print("live clients    : " + ("UNKNOWN (inventory failed)" if nodes is None else
+          "%d%s" % (len(nodes), (" (pids %s)" % [p for p, _ in nodes]) if nodes else "")))
     st = _read(STATUS)
     print("last run        : " + (st.strip() or "no status.json yet"))
     return 0 if paired() else 1
@@ -488,7 +576,7 @@ def main():
     ap.add_argument("--heal-patch", action="store_true", help="restore the QR_RAW patch")
     ap.add_argument("--port", type=int, default=DEFAULT_PORT)
     ap.add_argument("--timeout-sec", type=int, default=900)
-    ap.add_argument("--force", action="store_true", help="kill live clients and start anyway")
+    ap.add_argument("--force", action="store_true", help="deprecated; refuses foreign process termination")
     ap.add_argument("--no-open", action="store_true", help="do not open the browser")
     a = ap.parse_args()
     if a.check:

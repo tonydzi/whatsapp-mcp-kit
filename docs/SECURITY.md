@@ -8,7 +8,7 @@ The server is built on [Baileys](https://github.com/WhiskeySockets/Baileys), an 
 
 We linked a main working number knowingly, after reading the risk, and it has run since June 2026 — read-mostly, no mass sends. That is one data point, not a promise. What actually raises risk: bulk sends, fast reconnect loops, messaging people who never contacted you. `MIN_SEND_INTERVAL_MS` and `SEND_JITTER_MS` exist for exactly this; do not turn them off.
 
-If your use case fits the official WhatsApp Business / Cloud API, use that instead — it is supported and cannot get your personal account banned. This kit exists for the case the official API cannot serve: reading your own existing personal conversations.
+If your use case fits the official WhatsApp Business / Cloud API, use that instead — it has a different supported integration model and its own applicable policies. This kit exists for the case the official API cannot serve: reading your own existing personal conversations.
 
 ## The auth folder is the credential
 
@@ -22,8 +22,8 @@ If your use case fits the official WhatsApp Business / Cloud API, use that inste
 
 1. **Keep write tools behind explicit confirmation** in your MCP client if it supports it. Reading is recoverable; a wrong `send_message` is not.
 2. **Full-disk encryption** on any machine holding `auth_info/` and the message store.
-3. **One machine owns the link.** A second write client forces a re-scan (`AUTH_KEY_DUPLICATED`); more importantly, more copies of the credential = more places to leak from.
-4. **Bind anything you build to localhost.** The pairing page in this kit listens on `127.0.0.1` only, deliberately — it serves a live login QR, and anyone who can load that page can link *their* phone to your account.
+3. **One machine owns the link.** Use one connection owner and attach MCP clients to it. Competing sockets or copied auth state can disrupt a link; do not attribute a Telegram-specific error name to WhatsApp. More credential copies also increase exposure.
+4. **Bind anything you build to localhost.** The pairing page in this kit listens on `127.0.0.1` only, deliberately — it serves a live login QR, and access to its temporary pairing material must stay with the account owner. Do not expose the page or QR to other users.
 5. **Scope what the assistant may act on.** "Read my chats" and "reply on my behalf" are different permissions; decide them separately.
 
 ## Prompt injection — the failure mode specific to this connector
