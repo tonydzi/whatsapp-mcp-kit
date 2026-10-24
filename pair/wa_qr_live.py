@@ -176,9 +176,11 @@ def _server_rows(rows, self_pid):
     found = []
     unresolved = False
     def is_server_script(arg):
-        normalized = arg.replace("\\", "/").lower()
-        return (normalized.endswith("/@sjawhar/whatsapp-mcp/dist/index.js")
-                or os.path.normcase(os.path.realpath(arg)) == target)
+        resolved = os.path.realpath(arg)
+        return (any(value.replace("\\", "/").lower().endswith("/@sjawhar/whatsapp-mcp/dist/index.js")
+                    for value in (arg, resolved))
+                or os.path.normcase(resolved) == target
+                or os.path.basename(arg).lower() in ("whatsapp-mcp", "whatsapp-mcp.cmd"))
 
     for pid, _, executable, command in rows:
         if pid == self_pid:

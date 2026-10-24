@@ -181,3 +181,5 @@ codex mcp add whatsapp --url http://127.0.0.1:<ACCOUNT_PORT>/mcp --bearer-token-
 - [Upstream Baileys](https://github.com/WhiskeySockets/Baileys)
 
 Вопрос или воспроизводимый сбой: issue в [whatsapp-mcp-kit](https://github.com/tonydzi/whatsapp-mcp-kit/issues). Автор комплекта: [github.com/tonydzi](https://github.com/tonydzi).
+
+Если helper сообщает PROCESS INVENTORY UNKNOWN, отсутствие второго владельца не доказано: он не запускает новый socket. Такое бывает при скрытом CommandLine или неразрешённом относительном dist/index.js на macOS/Windows. Установите владельца и его рабочий каталог локально; не используйте force как обход и не останавливайте чужие процессы. Проверка процессов не является account lock и не доказывает отсутствие любого произвольного клиента.

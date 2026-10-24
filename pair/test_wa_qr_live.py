@@ -180,6 +180,16 @@ def main():
         check("native selector excludes self and unrelated, counts real ancestor", found is not None and [p for p, _ in found] == [90, 102], str(found))
         found_global = w._server_rows([(200, 1, "node", command("node", global_entry))], 100)
         check("other installation of same vendor is detected", found_global is not None and [p for p, _ in found_global] == [200], str(found_global))
+        alias = os.path.abspath(os.path.join(tmp, "bin", "custom-server-alias"))
+        original_realpath = w.os.path.realpath
+        def resolved_alias(value):
+            return global_entry if os.path.normcase(os.path.abspath(value)) == os.path.normcase(alias) else original_realpath(value)
+        with patch.object(w.os.path, "realpath", side_effect=resolved_alias):
+            aliased = w._server_rows([(207, 1, "node", command("node", alias, "--http"))], 100)
+            check("resolved npm bin alias from other install is detected", aliased is not None and [p for p, _ in aliased] == [207], str(aliased))
+        shim = os.path.abspath(os.path.join(tmp, "bin", "whatsapp-mcp.cmd"))
+        shimmed = w._server_rows([(208, 1, "node", command("node", shim, "--http"))], 100)
+        check("explicit absolute WhatsApp bin name is conservative match", shimmed is not None and [p for p, _ in shimmed] == [208], str(shimmed))
         check("unrelated relative Node and REPL do not block", w._server_rows([(201, 1, "node", "node server.js"), (202, 1, "node", "node")], 100) == [])
         check("hidden Node command needs manual inventory", w._server_rows([(203, 1, "node.exe", "")], 100) is None)
         check("unresolved plausible npm start is UNKNOWN", w._server_rows([(204, 1, "node", "node dist/index.js")], 100) is None)
