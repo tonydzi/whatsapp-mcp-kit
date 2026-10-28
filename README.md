@@ -2,6 +2,14 @@
 
 Connect Claude (Claude Code / Claude Desktop / Codex — any MCP client) to **a WhatsApp account** so it can read your chats and send messages. Includes portable setup skills, prompts, private pairing, shared HTTP configuration and recovery instructions.
 
+## Start in 3 steps
+
+1. Open Claude Code or Codex in an empty folder on the machine that should read WhatsApp.
+2. Paste the block from [`PROMPT.md`](PROMPT.md) (Russian versions: [Claude Code](PROMPT-CLAUDE.ru.md), [Codex](PROMPT-CODEX.ru.md)). Read it first: the agent checks what you already have, explains the account risk once, installs one shared local service and opens a QR page.
+3. On your phone: **WhatsApp → Settings → Linked devices → Link a device**, scan the page.
+
+**Done when:** you send yourself a fresh test word in WhatsApp and the agent reads that exact word back. Everything below is the detail behind these three steps.
+
 Built and battle-tested at [Palo Alto AI Research Lab](https://github.com/tonydzi/tonydzi) — our Claude fleet has been reading WhatsApp through exactly this setup since June 2026.
 
 ## Current setup for Claude Code and Codex
