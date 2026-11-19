@@ -1,0 +1,19 @@
+{
+  "name": "whatsapp-mcp-kit",
+  "description": "Setup kit that links a WhatsApp account to Claude Code, Codex or any MCP client. Ships one skill that walks an agent through install, QR pairing and repair.",
+  "owner": {
+    "name": "Anton Dziatkovskii / Palo Alto AI Research Lab",
+    "url": "https://github.com/tonydzi"
+  },
+  "plugins": [
+    {
+      "name": "whatsapp-mcp-kit",
+      "source": "./",
+      "description": "Setup and repair skill for a WhatsApp linked-device MCP in Claude Code and Codex: inventory first, one owner per account, QR pairing, fresh readback, explicit send acceptance.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Anton Dziatkovskii / Palo Alto AI Research Lab"
+      }
+    }
+  ]
+}

@@ -70,6 +70,21 @@ Connect Claude (Claude Code / Claude Desktop / Codex — any MCP client) to **a 
 
 Read the [complete runbook (Russian)](README.ru.md), then use the [Claude Code prompt](PROMPT-CLAUDE.ru.md) or [Codex prompt](PROMPT-CODEX.ru.md). Install the portable [whatsapp-connect skill](skills/whatsapp-connect/SKILL.md) for future sessions. Both clients connect to one loopback HTTP service; they must not each launch a full WhatsApp connection.
 
+The skill installs with one command. Claude Code, as a plugin:
+
+```
+/plugin marketplace add tonydzi/whatsapp-mcp-kit
+/plugin install whatsapp-mcp-kit@whatsapp-mcp-kit
+```
+
+Any agent that reads Agent Skills (Claude Code, Codex, Cursor, Gemini CLI):
+
+```bash
+npx skills add tonydzi/whatsapp-mcp-kit
+```
+
+This installs the setup skill only. The WhatsApp service itself is still installed by the steps above.
+
 This is one linked-device stack: [`@sjawhar/whatsapp-mcp`](https://github.com/sjawhar/whatsapp-mcp-2.0) + Baileys. Multiple accounts need separate private data roots and owners. The unofficial-client account restriction risk and access to private message content must be understood before linking; see [security](docs/SECURITY.md).
 
 ### Pinned setup and pairing
